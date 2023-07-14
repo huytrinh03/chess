@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.Stack;
 
 public class Game {
@@ -6,27 +7,41 @@ public class Game {
     Side currentTurn;
 
     public Game(){
-        // todo: write a constructor that initializes the game with a new board
-        // hint: you are also responsible for tracking whose turn it is
+        b = new Board();
+        currentTurn = Side.WHITE;
     }
 
     public static String getName() {
         return "Queen's Game-bit";
     }
+
     public boolean canMove(int x, int y, int destX, int destY, Side s){
        /* TODO write a method that checks if a piece at coordinates x,y can move to coordinates destX,destY
        Conditions for false:
        - Origin or destination coordinates are outside the board
-       - Piece at origin is null
        - If source and destination coordinates are the same
+       - Piece at origin is null
        - Piece at origin is not of the same side as s
-            - You can check this using piece.getSide()
+            - You can check this using Piece.getSide()
+       - Destination has a piece of the same Side as the player
        - Piece cannot move to the destination by piece movement rules
             - You should check this using Piece.canMove(destX, destY)
-       - Destination has a piece of the same Side as the player
        - piece must move "through" a piece to get from (x,y) to (destX,destY) (use isVisible())
             - The knight is the exception to this rule. The knight can hop "over" pieces, so be sure to check for this.
           */
+        if ( x < 0 || x > 7 || y < 0 || y > 7 || destX < 0 || destX > 7|| destY < 0 || destY > 7) { return false; }
+        if ((x == destX) && (y == destY)) { return false; }
+        if (this.b.get(x,y) == null) { return false; }
+        if (this.b.get(x,y).getSide() != s) { return false; }
+        if (this.b.get(destX,destY) != null){
+            if (this.b.get(destX,destY).getSide() == s) { return false; }
+        }
+        if (this.b.get(x,y).canMove(destX, destY)) {
+            if (!(this.b.get(x,y) instanceof Knight)) {
+                return isVisible(x, y, destX, destY);
+            }
+            return true;
+        }
         return false;
     }
 
@@ -133,8 +148,22 @@ public class Game {
      *  destY The y coordinate of the destination to move to
      */
     public boolean move(int x, int y, int destX, int destY){
-        // TODO write this method
-        return true;
+        if (canMove(x, y, destX, destY, currentTurn)){
+            appendMoveToHistory(x,y,destX,destY,currentTurn);
+            this.b.get(x,y).move(destX,destY);
+            //check if the opposite king is still on the board
+            Side oppositeSide = Side.negate(currentTurn);
+            if (this.b.getKing(oppositeSide) == null) {
+                appendWinToHistory(currentTurn);
+            }
+            else{               //check if any king is being checked
+                if (isInCheck(oppositeSide)) { appendCheckToHistory(oppositeSide); }
+                if (isInCheck(currentTurn)) { appendCheckToHistory(currentTurn); }
+                currentTurn = Side.negate(currentTurn);
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -143,7 +172,11 @@ public class Game {
      *
      */
     public boolean isInCheck(Side side) {
-        // TODO write this method
+        Side oppositeSide = Side.negate(side);
+        List<Piece> pieceList = this.b.getPieces(oppositeSide);
+        for (Piece piece : pieceList) {
+            if (canMove(piece.x, piece.y, this.b.getKing(side).x, this.b.getKing(side).y, oppositeSide)) { return true; }
+        }
         return false;
     }
 
